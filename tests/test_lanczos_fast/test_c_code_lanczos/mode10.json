@@ -1,1 +1,1 @@
-{"T": 250, "n_steps": 5, "ignore_v2": false, "ignore_v3": false, "ignore_v4": false, "data": {"n_configs": 10, "n_modes": 45, "n_syms": 384, "n_blocks": 9, "perturbation_modulus": 1, "reverse": false, "shift": 0}}
+{"T": 250, "n_steps": 5, "ignore_v2": false, "ignore_v3": false, "ignore_v4": false, "use_wigner": false, "run_sym": false, "data": {"n_configs": 10, "n_modes": 45, "n_syms": 384, "n_blocks": 9, "perturbation_modulus": 1, "reverse": false, "shift": 0}}

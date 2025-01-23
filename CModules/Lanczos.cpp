@@ -58,6 +58,18 @@ void Lanczos::setup_from_input(string rootname) {
     ignore_v3 = root.get<bool>("ignore_v3");
     ignore_v4 = root.get<bool>("ignore_v4");
 
+    // Check the optional key restart (default false)
+    int step_done = 0;
+    restart = false;
+    if (root.count("restart")) {
+        restart = root.get<bool>("restart");
+        step_done = root.get<int>("step_done");
+    }
+
+    if (step_done >= n_steps) {
+        throw invalid_argument("Error, n_steps must be greather than step_done.\n");
+    }
+
     // Now read the more complex values
     pt::ptree &data = root.get_child("data");
     N = data.get<int>("n_configs");
@@ -143,11 +155,12 @@ void Lanczos::setup_from_input(string rootname) {
     }
     file.close();
 
-    // Now read the 2D arrays
+
+    // Now read the 2D arrays (TODO: read also previous steps)
     file.open(rootname + ".X.dat");
     if (file.is_open()) {
         string line;
-        for (int k = 0; k < N*n_modes; ++k) {
+        for (int k = 0; k < N*n_modes ; ++k) {
             file >> X[k];
         }
     }
@@ -157,11 +170,56 @@ void Lanczos::setup_from_input(string rootname) {
     file.open(rootname + ".Y.dat");
     if (file.is_open()) {
         string line;
-        for (int k = 0; k < N*n_modes; ++k) {
+        for (int k = 0; k < N*n_modes ; ++k) {
             file >> Y[k];
         }
     }
     file.close();
+
+
+    // Check if we need a restart
+    // And load P and Q
+    if (restart) {
+        file.open(rootname + ".abc");
+        if (file.is_open()) {
+            string line;
+            for (int k = 0; k < step_done ; ++k) {
+                file >> a[k];
+                file >> b[k];
+                file >> c[k];
+            }
+        }
+        file.close();
+
+        file.open(rootname + ".qbasis.out");
+        if (file.is_open()) {
+            string line;
+            for (int k = 0; k < n_psi * (step_done+1) ; ++k) {
+                file >> Qbasis[k];
+            }
+        }
+        file.close();
+
+        file.open(rootname + ".pbasis.out");
+        if (file.is_open()) {
+            string line;
+            for (int k = 0; k < n_psi * (step_done+1) ; ++k) {
+                file >> Pbasis[k];
+            }
+        }
+        file.close();
+
+        file.open(rootname + ".snorm.out");
+        if (file.is_open()) {
+            string line;
+            for (int k = 0; k < step_done + 1; ++k) {
+                file >> snorm[k];
+            }
+        }
+        file.close();
+
+        i_step = step_done;
+    }
 
 
     file.open(rootname + ".blockid");
@@ -480,8 +538,8 @@ void Lanczos::run() {
     double * p_L = (double*) malloc(sizeof(double) * n_psi);
 
     // Store the lenght of the variables
-    int lena = 0, lenb = 0, lenc = 0, lens = 1;
-    int len_bq = 1, len_bp = 1;
+    int lena = i_step, lenb = i_step, lenc = i_step, lens = i_step + 1;
+    int len_bq = i_step + 1, len_bp = i_step + 1;
     
     // Prepare the first vector computing the norm of psi
     double psi_norm = 0;
@@ -490,26 +548,23 @@ void Lanczos::run() {
 
 
     // Fill the first vector of P and Q basis
+
+    psi_q = (double *) malloc(sizeof(double) * n_psi);
+    psi_p = (double *) malloc(sizeof(double) * n_psi);
+    double * sk_tilde = (double*) malloc(sizeof(double) * n_psi);
+
     if (i_step == 0) {
         for (int i = 0; i < n_psi; ++i) {
             Qbasis[i] = psi[i] / psi_norm;
             Pbasis[i] = psi[i] / psi_norm;
         }
         snorm[0] = 1;
-    } else {
-        cerr << "Error, starting from a non zero step is not implemented." << endl;
-        exit(EXIT_FAILURE);
-    }
-
-
-    psi_q = (double *) malloc(sizeof(double) * n_psi);
-    psi_p = (double *) malloc(sizeof(double) * n_psi);
-    double * sk_tilde = (double*) malloc(sizeof(double) * n_psi);
+    } 
 
 
     for (int j = 0; j < n_psi; ++j) {
-        psi_q[j] = Qbasis[j];
-        psi_p[j] = Pbasis[j];
+        psi_q[j] = Qbasis[i_step * n_psi + j];
+        psi_p[j] = Pbasis[i_step * n_psi + j];
     }
 
     double a_coeff, b_coeff, c_coeff;
@@ -521,30 +576,49 @@ void Lanczos::run() {
     fstream file_snorm;
     
     if (am_i_the_master()) {
-        file_abc.open(rootname + ".abc", fstream::out);
-        file_qbasis.open(rootname + ".qbasis.out", fstream::out);
-        file_pbasis.open(rootname + ".pbasis.out", fstream::out);
-        file_snorm.open(rootname + ".snorm.out", fstream::out);
+        if (restart) {
+            file_abc.open(rootname + ".abc", fstream::out | fstream::app);
+            file_qbasis.open(rootname + ".qbasis.out", fstream::out | fstream::app);
+            file_pbasis.open(rootname + ".pbasis.out", fstream::out | fstream::app);
+            file_snorm.open(rootname + ".snorm.out", fstream::out | fstream::app);
+        } else {
+            file_abc.open(rootname + ".abc", fstream::out);
+            file_qbasis.open(rootname + ".qbasis.out", fstream::out);
+            file_pbasis.open(rootname + ".pbasis.out", fstream::out);
+            file_snorm.open(rootname + ".snorm.out", fstream::out);
+        }
     }
 
-    if (file_qbasis.is_open()) {
+    // Setup the required precision after the restart
+    if (file_qbasis.is_open()) 
         file_qbasis << scientific << setprecision(16);
-        for (int j = 0; j < n_psi; ++j) {
-            file_qbasis << psi_q[j] << " ";
-        }
-        file_qbasis << endl;
 
-    } 
-    if (file_pbasis.is_open()) { 
+    if (file_pbasis.is_open())
         file_pbasis << scientific << setprecision(16);
-        for (int j = 0; j < n_psi; ++j) {
-            file_pbasis << psi_p[j] << " ";
-        }
-        file_pbasis << endl;
-    }
 
-    if (file_snorm.is_open()) {
-        file_snorm << scientific << setprecision(16) << snorm[0] << endl << flush;
+    if (file_snorm.is_open())
+        file_snorm << scientific << setprecision(16);
+
+    if (! restart) {
+        if (file_qbasis.is_open()) {
+            file_qbasis << scientific << setprecision(16);
+            for (int j = 0; j < n_psi; ++j) {
+                file_qbasis << psi_q[j] << " ";
+            }
+            file_qbasis << endl;
+
+        } 
+        if (file_pbasis.is_open()) { 
+            file_pbasis << scientific << setprecision(16);
+            for (int j = 0; j < n_psi; ++j) {
+                file_pbasis << psi_p[j] << " ";
+            }
+            file_pbasis << endl;
+        }
+
+        if (file_snorm.is_open()) {
+            file_snorm << scientific << setprecision(16) << snorm[0] << endl << flush;
+        }
     }
 
     // Here the run
@@ -555,7 +629,7 @@ void Lanczos::run() {
     if (DEBUG_LANC && am_i_the_master()) 
         cout << "PSI POINTER (LINE " << __LINE__ << "): " << psi << endl;
 
-    for (int i = i_step; i < i_step + n_steps; ++i) {
+    for (int i = i_step; i < n_steps; ++i) {
         if (am_i_the_master()) {
             cout << endl;
             cout << "===== NEW STEP " << i + 1 <<" =====" <<endl << endl;

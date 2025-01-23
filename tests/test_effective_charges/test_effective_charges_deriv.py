@@ -46,8 +46,8 @@ def test_effective_charges_derivative(verbose = False):
         
         # Get the effective charges
         eff_charges = get_effective_charges(ensemble.structures)
-        z_av = tdscha.Perturbations.get_M_av(ensemble, eff_charges)
-        dz_dR_av = tdscha.Perturbations.get_dM_dR(ensemble, eff_charges)
+        z_av = tdscha.Perturbations.get_d1M_dR_av(ensemble, eff_charges)
+        dz_dR_av = tdscha.Perturbations.get_d2M_dR_av(ensemble, eff_charges)
 
         z0[i] = z_av[0, 0]
         dz_dR[i] = dz_dR_av[0, 0, 0]

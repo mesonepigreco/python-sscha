@@ -5,7 +5,7 @@ import cellconstructor as CC
 import cellconstructor.Phonons
 import cellconstructor.Structure
 
-import sscha, sscha.DynamicalLanczos
+import tdscha, tdscha.DynamicalLanczos as DL
 import numpy as np
 
 import scipy
@@ -331,7 +331,7 @@ def test_lanczos_1d(plot = False):
     dyn = CC.Phonons.Phonons(struct)
 
     # Initialize the lanczos algorithm
-    lanc = sscha.DynamicalLanczos.Lanczos()
+    lanc = DL.Lanczos()
 
     # Initliaize the lanczos from a 1D problem
     lanc.w = np.zeros(1, dtype = np.double)
@@ -384,7 +384,8 @@ def test_lanczos_1d(plot = False):
     # Compare the application on psi
     lanc.psi = np.zeros(3, dtype = np.double)
     lanc.psi[0] = 1 
-
+    lanc.prepare_input_files(n_steps = 10, directory = "prova")
+    
     L_anal_psi = apply_L(x_c, phi, lanc.psi)
 #     lanc.prepare_input_files(n_steps = 10)
     lanc.apply_full_L(force_FT= True) 
@@ -422,8 +423,8 @@ def test_lanczos_1d(plot = False):
     print()
 
     # Get the L and Lt to test hermitianity
-    L = sscha.DynamicalLanczos.get_full_L_matrix(lanc)
-    Lt = sscha.DynamicalLanczos.get_full_L_matrix(lanc, transpose = True)
+    L = DL.get_full_L_matrix(lanc)
+    Lt = DL.get_full_L_matrix(lanc, transpose = True)
 
     disp = np.max(np.abs(L - Lt.T)) / np.max(np.abs(L))
     print("Discrepance between L and Lt: {}".format(disp))
@@ -431,10 +432,10 @@ def test_lanczos_1d(plot = False):
     np.savetxt("L.dat", L)
     np.savetxt("Lt.dat", Lt)
 
-    L_static = sscha.DynamicalLanczos.get_full_L_matrix(lanc, static = True)
+    L_static = DL.get_full_L_matrix(lanc, static = True)
     np.savetxt("Lstatic.dat", L_static)
     
-    L_harm = sscha.DynamicalLanczos.get_full_L_matrix(lanc, static = True, compute_anharm = False)
+    L_harm = DL.get_full_L_matrix(lanc, static = True, compute_anharm = False)
     np.savetxt("Lstatic_harm.dat", L_harm)
 
     assert disp < 1e-6, "Error, L application is not cinitorrectly transposed."

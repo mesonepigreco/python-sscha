@@ -86,15 +86,17 @@ odd_HP = Extension(name = "sscha_HP_odd",
 
 # Prepare the compilation of the Python Conde
 setup( name = "tdscha",
-       version = "0.1",
+       version = "1.5.0",
        description = "Time Dependent Self Consistent Harmonic Approximation",
        author = "Lorenzo Monacelli",
-       url = "https://github.com/mesonepigreco/python-sscha",
+       url = "https://github.com/SSCHAcode/tdscha",
        packages = ["tdscha"],
+       include_package_data=True,
        package_dir = {"tdscha": "Modules"},
+       package_data={"": ["*.jl"]},
        install_requires = ["numpy", "ase", "scipy", "cellconstructor", "python-sscha"],
        ext_modules = [odd_HP],
-       scripts = ["scripts/plot_lanczos_convergence.py", "scripts/plot_hessian_convergence.py"],
+       scripts = [os.path.join("scripts", x) for x in os.listdir("scripts") if x.endswith(".py")],
        license = "GPLv3"
        )
                                                                                                                                                           

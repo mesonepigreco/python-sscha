@@ -1,0 +1,8 @@
+name = "TDSCHA"
+uuid = "52e47506-a73b-4482-a8d5-a9c7f56773e6"
+authors = ["Lorenzo Monacelli <mesonepigreco@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"

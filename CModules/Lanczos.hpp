@@ -16,7 +16,7 @@ using namespace std;
 class Lanczos {
     int N, n_syms, n_modes, n_steps, n_blocks;
     int i_step;
-    bool ignore_v2, ignore_v3, ignore_v4, reverse_L;
+    bool ignore_v2, ignore_v3, ignore_v4, reverse_L, restart;
 
     double T, shift_value;
 
